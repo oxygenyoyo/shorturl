@@ -66,6 +66,12 @@ exports.postShortenUrl = (req, res) => {
     return false;
   }
 
+  const isUrlLongerThan255ThenReturnError = longUrl.length > 255;
+  if ( isUrlLongerThan255ThenReturnError ) {
+    res.json({error:true, message: 'this url is longer than 255 letter.'});
+    return false;
+  }
+
   
   let resultShortUrl = config.webhost;
   Url.findOne({long_url: longUrl})
