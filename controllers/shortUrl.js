@@ -1,42 +1,84 @@
 const Promise = require('bluebird');
 const config = require('../config');
 const utility = require('../helper/utility');
-const firebase = require('firebase');
 const mongoose = require('mongoose');
+mongoose.Promise = Promise;
 const Url = require('../models/url');
 
 
 // create a connection to our MongoDB
 mongoose.connect('mongodb://' + config.db.host + '/' + config.db.name, {useMongoClient: true});
 
-exports.postShortenUrl = (req, res) => {
-  const longUrl = req.body.url;
-  let resultShortUrl = '';
-  
-  // check if url already exists in database
-  Url.findOne({long_url: longUrl}, function (err, doc){
+const validateUrl = (url) => {
+  const pattCheckSpecialchar = /[^a-zA-Z0-9|\.|\@|\!|\*|\'|\(|\)|\;|\:|\@|\&|\=|\+|\$|\,|\/|\?|\#|\[|\]]/ig;
+  const hasSpecialcharThenReturnFalse = pattCheckSpecialchar.test(url);
+  if( hasSpecialcharThenReturnFalse ) {
+    return false;
+  } else {
+    return true;
+  }
+};
+
+const fillHttpWhenNotFillInUrl = (url) => {
+  const pattCheckHttpOrHttps = /^[^http|https]/g;
+  const isNotFillHttpThenAutoFillIt = pattCheckHttpOrHttps.test(url);
+  if( isNotFillHttpThenAutoFillIt ) {
+    return 'http://' + url;
+  } else {
+    return url;
+  }
+};
+
+const checkInputHasOnlyLetter = (url) => {
+  const pattCheckHttpOrHttps = /[^0-9a-zA-Z]/ig;
+  return !pattCheckHttpOrHttps.test(url);
+};
+
+const constructShortUrl = (doc, longUrl) => {
+  return new Promise((resolve, reject) => {
     const hasFoundThenReturnShortUrlFromDB = doc;
     if ( hasFoundThenReturnShortUrlFromDB ) {
-      // URL has already been shortened
-      resultShortUrl = config.webhost + utility.encodeShortenUrl(doc._id);
-      res.send({'shortUrl': shortUrl});
+      resolve(utility.encodeShortenUrl(doc._id));
     } else {
-      // The long URL was not found in the long_url field in our urls
-      // collection, so we need to create a new entry:
-      var newUrl = Url({
-        long_url: longUrl
-      });
-
-      // save the new link
-      newUrl.save(function(err) {
-        if (err){
-          console.log(err);
+      const isNormalUrlThenFillHttp = !checkInputHasOnlyLetter(longUrl);
+      if ( isNormalUrlThenFillHttp ) {
+        longUrl = fillHttpWhenNotFillInUrl(longUrl);
+      }
+      
+      Url({long_url: longUrl}).save()
+      .then((newUrl) => {
+        const hasOnlyLetterThenNotEncodeUrl = checkInputHasOnlyLetter(longUrl);
+        if ( hasOnlyLetterThenNotEncodeUrl ) {
+          resolve(longUrl);
+        } else {
+          resolve(utility.encodeShortenUrl(newUrl._id));
         }
-        // construct the short URL
-        resultShortUrl = config.webhost + utility.encodeShortenUrl(newUrl._id);
-        res.send({'shortUrl': resultShortUrl});
       });
     }
+  });
+};
+
+exports.postShortenUrl = (req, res) => {
+  let longUrl = req.body.url;
+  const isInValidThenReturnError = !validateUrl(longUrl);
+  if ( isInValidThenReturnError ) {
+    res.json({error:true, message: 'this url has invalid letter.'});
+    return false;
+  }
+
+  
+  let resultShortUrl = config.webhost;
+  Url.findOne({long_url: longUrl})
+  .then((doc) => {
+    return constructShortUrl(doc, longUrl)
+    .then((url) => {
+      resultShortUrl += url;
+      res.send({'shortUrl': resultShortUrl});
+      return true;
+    });
+  })
+  .catch((error) => {
+    res.json({error:true, message: error.message});
   });
 };
 
@@ -48,12 +90,10 @@ exports.redirectToRealUrl = (req, res) => {
   // check if url already exists in database
   Url.findOne({_id: id}, (err, doc) => {
     const hasFoundThenRedirectToRealUrl = doc;
-    console.log('doc.long_url', doc.long_url);
     if ( hasFoundThenRedirectToRealUrl ) {
       res.redirect(doc.long_url);
     } else {
       res.redirect(config.webhost);
     }
-    // res.send('test');
   });
 };

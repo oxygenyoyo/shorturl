@@ -68,6 +68,7 @@ body {
   
 }
 
+.error-link,
 .shorten-link {
   padding-top: 15px;
   color: #FFFFFF;
@@ -77,6 +78,10 @@ body {
 
 .shorten-link a {
   color: #FFFFFF;
+}
+
+.error-link {
+  color: #f96f62;
 }
 
 @media (min-width: 768px) {

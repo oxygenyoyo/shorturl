@@ -1,1 +1,6 @@
 node_modules
+cert.pem
+client-cert.pem
+client.csr
+key.pem
+client-key.pem

@@ -4,7 +4,6 @@ exports.encodeShortenUrl = (num) => {
   let encoded = '';
   while (num){
     let remainder = num % base;
-    console.log(remainder);
     num = Math.floor(num / base);
     encoded = alphabet[remainder].toString() + encoded;
   }
