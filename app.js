@@ -21,6 +21,9 @@ const options = {
 
 https.createServer(options, app).listen(443);
 
+var server = app.listen(80, function(){
+  console.log('Server listening on port 80');
+});
 
 app.get('/', function(req, res){
   res.sendFile(path.join(__dirname, 'views/index.html'));
