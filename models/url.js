@@ -8,6 +8,13 @@ var CounterSchema = Schema({
 
 // create a model from that schema
 var counter = mongoose.model('counters', CounterSchema);
+
+// for the first time when run application set seq 
+counter.findOne({_id: 'url_count'}, (err, doc) => {
+    if ( doc == null ) {
+        counter({_id: 'url_count', seq: 10000}).save();
+    }
+});
 // create a schema for our links
 var urlSchema = new Schema({
   _id: {type: Number, index: true},
@@ -21,12 +28,15 @@ urlSchema.pre('save', function(next){
   var doc = this;
   // find the url_count and increment it by 1
   counter.findByIdAndUpdate({_id: 'url_count'}, {$inc: {seq: 1} }, function(error, counter) {
-      if (error)
+    if (error)
           return next(error);
-      // set the _id of the urls collection to the incremented value of the counter
-      doc._id = counter.seq;
-      doc.created_at = new Date();
-      next();
+      
+    // set the _id of the urls collection to the incremented value of the counter
+    doc._id = counter.seq;
+    doc.created_at = new Date();
+    next();
+    
+      
   });
 });
 
